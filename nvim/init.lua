@@ -27,6 +27,25 @@ require("lazy").setup({
 	{ "nvim-treesitter/nvim-treesitter-textobjects" },
 	{ "nvim-treesitter/playground" },
 	{ "HiPhish/nvim-ts-rainbow2" },
+	{
+		'cameron-wags/rainbow_csv.nvim',
+		config = true,
+		ft = {
+			'csv',
+			'tsv',
+			'csv_semicolon',
+			'csv_whitespace',
+			'csv_pipe',
+			'rfc_csv',
+			'rfc_semicolon'
+		},
+		cmd = {
+			'RainbowDelim',
+			'RainbowDelimSimple',
+			'RainbowDelimQuoted',
+			'RainbowMultiDelim'
+		}
+	},
 	{ "windwp/nvim-ts-autotag" },
 	{ "tikhomirov/vim-glsl" },
 	{ 'timtro/glslView-nvim',             ft = 'glsl' },
@@ -58,19 +77,67 @@ require("lazy").setup({
 		end,
 		opts = {}
 	},
-	{ 
+	{
 		"nvim-telescope/telescope.nvim", tag = "0.1.5", dependencies = { 'nvim-lua/plenary.nvim' },
 		config = function()
 			require("plenary.filetype").add_file("sf_type")
 		end
 	},
 	{ 'nvim-telescope/telescope-fzf-native.nvim', build = 'make' },
+	{
+		'huggingface/llm.nvim',
+		opts = {
+			api_token = nil, -- cf Install paragraph
+			model = "codellama:7b", -- the model ID, behavior depends on backend
+			backend = "ollama", -- backend ID, "huggingface" | "ollama" | "openai" | "tgi"
+			url = "http://localhost:11434/api/generate", -- the http url of the backend
+			--tokens_to_clear = { "<|endoftext|>" }, -- tokens to remove from the model's output
+			tokens_to_clear = { "EOT" }, -- tokens to remove from the model's output
+			-- parameters that are added to the request body, values are arbitrary, you can set any field:value pair here it will be passed as is to the backend
+			request_body = {
+				parameters = {
+					max_new_tokens = 60,
+					temperature = 0.2,
+					top_p = 0.95,
+				},
+			},
+			-- set this if the model supports fill in the middle
+			fim = {
+				enabled = true,
+				prefix = "<PRE> ",
+				middle = " <MID>",
+				suffix = " <SUF>",
+			},
+			-- fim = {
+			-- 	enabled = true,
+			-- 	prefix = "<fim_prefix>",
+			-- 	middle = "<fim_middle>",
+			-- 	suffix = "<fim_suffix>",
+			-- },
+			debounce_ms = 150,
+			accept_keymap = "<Tab>",
+			dismiss_keymap = "<S-Tab>",
+			tls_skip_verify_insecure = false,
+			-- llm-ls configuration, cf llm-ls section
+			lsp = {
+				bin_path = vim.api.nvim_call_function("stdpath", { "data" }) .. "/mason/bin/llm-ls",
+				host = "localhost",
+				port = "11434",
+				version = "0.5.2",
+			},
+			tokenizer = nil, -- cf Tokenizer paragraph
+			context_window = 8192, -- max number of tokens for the context window
+			enable_suggestions_on_startup = true,
+			enable_suggestions_on_files = "*", -- pattern matching syntax to enable suggestions on specific files, either a string or a list of strings
+		}
+	},
 })
 
 vim.o.background = "dark" -- or "light" for light mode
 vim.cmd([[colorscheme gruvbox]])
 
 vim.opt.shellcmdflag = "-c"
+vim.opt.shellslash = true
 
 -- Mason
 require("mason").setup()
@@ -116,14 +183,102 @@ lspconfig.lua_ls.setup({
 			},
 		}
 	},
-	capabilities = capabilities
+	capabilities = capabilities,
 })
+
+-- Rust LS
+lspconfig.rust_analyzer.setup {
+	settings = {
+		['rust-analyzer'] = {},
+	},
+}
+--[[
+]]
 
 -- Apex LS
 lspconfig.apex_ls.setup {
 	filetypes = { "apex", "soql", "sosl", "apexcode" },
 	apex_jar_path = vim.fn.stdpath("data") .. "/mason/share/apex-language-server/apex-jorje-lsp.jar",
 	apex_enabled_semantic_errors = false,
+}
+
+-- Clang
+lspconfig.clangd.setup {
+	filetypes = { "c", "cpp", "objc", "objcpp", "cuda", "proto" },
+	capabilities = capabilities,
+}
+
+-- Zig
+lspconfig.zls.setup{}
+
+-- Azure Pipelines LS
+lspconfig.azure_pipelines_ls.setup{
+  settings = {
+      yaml = {
+          schemas = {
+              ["https://raw.githubusercontent.com/microsoft/azure-pipelines-vscode/master/service-schema.json"] = {
+                  "/azure-pipeline*.y*l",
+                  "/*.azure*",
+                  "Azure-Pipelines/**/*.y*l",
+                  "Pipelines/*.y*l",
+              },
+          },
+      },
+  },
+}
+
+-- Bash
+lspconfig.bashls.setup{}
+
+-- JSON
+--Enable (broadcasting) snippet capability for completion
+--local capabilities = vim.lsp.protocol.make_client_capabilities()
+capabilities.textDocument.completion.completionItem.snippetSupport = true
+
+lspconfig.jsonls.setup {
+  capabilities = capabilities,
+}
+
+-- LWC
+lspconfig.lwc_ls.setup{}
+
+-- VisualForce
+lspconfig.visualforce_ls.setup{}
+
+-- RobotFramework
+lspconfig.robotframework_ls.setup{}
+
+-- Python
+lspconfig.pyright.setup{}
+
+-- Go
+lspconfig.gopls.setup{}
+
+-- SQL
+lspconfig.sqlls.setup{}
+
+-- YAML
+lspconfig.yamlls.setup{}
+
+-- YAML
+lspconfig.yamlls.setup{}
+
+-- WGSL
+lspconfig.wgsl_analyzer.setup{}
+
+-- Typos
+lspconfig.typos_lsp.setup{}
+
+-- GLSL Analyzer
+lspconfig.glsl_analyzer.setup{}
+
+-- HTML
+--Enable (broadcasting) snippet capability for completion
+--local capabilities = vim.lsp.protocol.make_client_capabilities()
+capabilities.textDocument.completion.completionItem.snippetSupport = true
+
+lspconfig.html.setup {
+  capabilities = capabilities,
 }
 
 -- Which Key Mappings
@@ -140,8 +295,8 @@ wk.register({
 	-- Vim Diagnostics
 	-- See `:help vim.diagnostic.*` for documentation on any of the below functions
 	["<space>e"] = { vim.diagnostic.open_float, "Open Diagnostics" },
-	["[d"] = { vim.diagnostic.goto_prev, "Go to Previous Diagnositc" },
-	["]d"] = { vim.diagnostic.goto_next, "Go to Next Diagnositc" },
+	["[d"] = { vim.diagnostic.goto_prev, "Go to Previous Diagnostic" },
+	["]d"] = { vim.diagnostic.goto_next, "Go to Next Diagnostic" },
 	["<space>q"] = { vim.diagnostic.setloclist, "Set Local List" },
 
 	-- Floatterm Keymappings
@@ -205,16 +360,6 @@ vim.api.nvim_create_autocmd('LspAttach', {
 	end,
 })
 
--- Rust LS
---[[
-lspconfig.rust_analyzer.setup {
-	settings = {
-		['rust-analyzer'] = {},
-	},
-}
-]]
---
---
 local cfg = require('rustaceanvim.config')
 -- Update this path
 local extension_path = vim.env.HOME .. '/.vscode/extensions/vadimcn.vscode-lldb-1.10.0/'
@@ -334,7 +479,7 @@ treesitter.setup({
 	-- ensure these language parsers are installed
 	ensure_installed = {
 		"apex", "bash", "c", "css", "csv", "glsl", "go", "html", "java", "javascript",
-		"json", "lua", "markdown", "markdown_inline", "rust", "soql", "sosl", "toml",
+		"json", --[["lua",--]] "markdown", "markdown_inline", "rust", "soql", "sosl", "toml",
 		"typescript", "vim", "vimdoc", "wgsl", "wgsl_bevy", --"xml", -- This has some error right now
 		"yaml",
 	},
@@ -428,6 +573,8 @@ vim.o.smartindent = true
 
 vim.o.ignorecase = true
 vim.o.smartcase = true
+
+vim.o.number = true
 
 vim.filetype = on
 
