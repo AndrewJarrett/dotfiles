@@ -84,60 +84,63 @@ require("lazy").setup({
 		end
 	},
 	{ 'nvim-telescope/telescope-fzf-native.nvim', build = 'make' },
-	{
-		'huggingface/llm.nvim',
-		opts = {
-			api_token = nil, -- cf Install paragraph
-			model = "codellama:7b", -- the model ID, behavior depends on backend
-			backend = "ollama", -- backend ID, "huggingface" | "ollama" | "openai" | "tgi"
-			url = "http://localhost:11434/api/generate", -- the http url of the backend
-			--tokens_to_clear = { "<|endoftext|>" }, -- tokens to remove from the model's output
-			tokens_to_clear = { "EOT" }, -- tokens to remove from the model's output
-			-- parameters that are added to the request body, values are arbitrary, you can set any field:value pair here it will be passed as is to the backend
-			request_body = {
-				parameters = {
-					max_new_tokens = 60,
-					temperature = 0.2,
-					top_p = 0.95,
-				},
-			},
-			-- set this if the model supports fill in the middle
-			fim = {
-				enabled = true,
-				prefix = "<PRE> ",
-				middle = " <MID>",
-				suffix = " <SUF>",
-			},
-			-- fim = {
-			-- 	enabled = true,
-			-- 	prefix = "<fim_prefix>",
-			-- 	middle = "<fim_middle>",
-			-- 	suffix = "<fim_suffix>",
-			-- },
-			debounce_ms = 150,
-			accept_keymap = "<Tab>",
-			dismiss_keymap = "<S-Tab>",
-			tls_skip_verify_insecure = false,
-			-- llm-ls configuration, cf llm-ls section
-			lsp = {
-				bin_path = vim.api.nvim_call_function("stdpath", { "data" }) .. "/mason/bin/llm-ls",
-				host = "localhost",
-				port = "11434",
-				version = "0.5.2",
-			},
-			tokenizer = nil, -- cf Tokenizer paragraph
-			context_window = 8192, -- max number of tokens for the context window
-			enable_suggestions_on_startup = true,
-			enable_suggestions_on_files = "*", -- pattern matching syntax to enable suggestions on specific files, either a string or a list of strings
-		}
-	},
+	--{
+	--	'huggingface/llm.nvim',
+	--	opts = {
+	--		api_token = nil, -- cf Install paragraph
+	--		model = "codellama:7b", -- the model ID, behavior depends on backend
+	--		backend = "ollama", -- backend ID, "huggingface" | "ollama" | "openai" | "tgi"
+	--		url = "http://localhost:11434/api/generate", -- the http url of the backend
+	--		--tokens_to_clear = { "<|endoftext|>" }, -- tokens to remove from the model's output
+	--		tokens_to_clear = { "EOT" }, -- tokens to remove from the model's output
+	--		-- parameters that are added to the request body, values are arbitrary, you can set any field:value pair here it will be passed as is to the backend
+	--		request_body = {
+	--			parameters = {
+	--				max_new_tokens = 60,
+	--				temperature = 0.2,
+	--				top_p = 0.95,
+	--			},
+	--		},
+	--		-- set this if the model supports fill in the middle
+	--		fim = {
+	--			enabled = true,
+	--			prefix = "<PRE> ",
+	--			middle = " <MID>",
+	--			suffix = " <SUF>",
+	--		},
+	--		-- fim = {
+	--		-- 	enabled = true,
+	--		-- 	prefix = "<fim_prefix>",
+	--		-- 	middle = "<fim_middle>",
+	--		-- 	suffix = "<fim_suffix>",
+	--		-- },
+	--		debounce_ms = 150,
+	--		accept_keymap = "<Tab>",
+	--		dismiss_keymap = "<S-Tab>",
+	--		tls_skip_verify_insecure = false,
+	--		-- llm-ls configuration, cf llm-ls section
+	--		lsp = {
+	--			bin_path = vim.api.nvim_call_function("stdpath", { "data" }) .. "/mason/bin/llm-ls",
+	--			host = "localhost",
+	--			port = "11434",
+	--			version = "0.5.2",
+	--		},
+	--		tokenizer = nil, -- cf Tokenizer paragraph
+	--		context_window = 8192, -- max number of tokens for the context window
+	--		enable_suggestions_on_startup = true,
+	--		enable_suggestions_on_files = "*", -- pattern matching syntax to enable suggestions on specific files, either a string or a list of strings
+	--	}
+	--},
 })
 
 vim.o.background = "dark" -- or "light" for light mode
 vim.cmd([[colorscheme gruvbox]])
 
 vim.opt.shellcmdflag = "-c"
-vim.opt.shellslash = true
+
+if (vim.loop.os_uname().sysname == "Windows_NT") then 
+	vim.opt.shellslash = true
+end
 
 -- Mason
 require("mason").setup()
@@ -211,6 +214,12 @@ lspconfig.clangd.setup {
 -- Zig
 lspconfig.zls.setup{}
 
+-- Java
+lspconfig.java_language_server.setup {
+	filetypes = { "java" },
+	capabilities = capabilities,
+}
+
 -- Azure Pipelines LS
 lspconfig.azure_pipelines_ls.setup{
   settings = {
@@ -260,9 +269,6 @@ lspconfig.sqlls.setup{}
 -- YAML
 lspconfig.yamlls.setup{}
 
--- YAML
-lspconfig.yamlls.setup{}
-
 -- WGSL
 lspconfig.wgsl_analyzer.setup{}
 
@@ -283,51 +289,48 @@ lspconfig.html.setup {
 
 -- Which Key Mappings
 local wk = require("which-key")
-wk.register({
-	-- Telescope
-	["<leader>f"] = {
-		name = "+file",
-		f = { "<cmd>Telescope find_files<cr>", "Find File" },
-		r = { "<cmd>Telescope oldfiles<cr>", "Open Recent File" },
-		n = { "<cmd>enew<cr>", "New File" },
-	},
-
-	-- Vim Diagnostics
-	-- See `:help vim.diagnostic.*` for documentation on any of the below functions
-	["<space>e"] = { vim.diagnostic.open_float, "Open Diagnostics" },
-	["[d"] = { vim.diagnostic.goto_prev, "Go to Previous Diagnostic" },
-	["]d"] = { vim.diagnostic.goto_next, "Go to Next Diagnostic" },
-	["<space>q"] = { vim.diagnostic.setloclist, "Set Local List" },
-
-	-- Floatterm Keymappings
-	["<leader>t"] = {
-		name = "floaterm",
-		o = { "<cmd>FloatermNew<cr>", "Open Floaterm" },
-		n = { "<cmd>FloatermNext<cr>", "Go to Next Floaterm" },
-		p = { "<cmd>FloatermPrev<cr>", "Go to Previous Floaterm" },
-		t = { "<cmd>FloatermToggle<cr>", "Toggle Floaterm" },
-	},
-
-	-- Persistence
-	["<leader>q"] = {
-		name = "persistence",
-		s = { '<cmd>lua require("persistence").load()<cr>', "Restore session for current directory" },
-		l = { '<cmd>lua require("persistence").load({ last = true })<cr>', "Restore the last session" },
-		d = { '<cmd>lua require("persistence").stop()<cr>', "Stop session save on exit" },
-	},
+-- Telescope
+wk.add({
+	{ "<leader>f", group = "file" },
+	{ "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find File" },
+	{ "<leader>fn", desc = "New File" },
+	{ "<leader>fr", "<cmd>Telescope oldfiles<cr>", desc = "Open Recent File" },
+})
+-- Vim Diagnostics
+-- See `:help vim.diagnostic.*` for documentation on any of the below functions
+wk.add({
+	{ "<space>e", "function() vim.diagnostic.open_float end", desc = "Open Diagnostics" },
+	{ "<space>q", "function() vim.diagnostic.setloclist end", desc = "Set Local List" },
+	{ "[d", "function() vim.diagnostic.goto_prev end", desc = "Go to Previous Diagnostic" },
+	{ "]d", "function() vim.diagnostic.goto_next end", desc = "Go to Next Diagnostic" },
+})
+-- Floatterm Keymappings
+wk.add({
+	{ "<leader>t", group = "floaterm", mode = { "n", "t", }},
+	{ "<leader>tn", "<cmd>FloatermNext<cr>", desc = "Go to Next Floaterm", mode = { "n", "t", }},
+	{ "<leader>to", "<cmd>FloatermNew<cr>", desc = "Open Floaterm", mode = { "n", "t", }},
+	{ "<leader>tp", "<cmd>FloatermPrev<cr>", desc = "Go to Previous Floaterm", mode = { "n", "t", }},
+	{ "<leader>tt", "<cmd>FloatermToggle<cr>", desc = "Toggle Floaterm", mode = { "n", "t", }},
+}, { mode = "t" })
+-- Persistence
+wk.add({
+	{ "<leader>q", group = "persistence" },
+	{ "<leader>qd", '<cmd>lua require("persistence").stop()<cr>', desc = "Stop session save on exit" },
+	{ "<leader>ql", '<cmd>lua require("persistence").load({ last = true })<cr>', desc = "Restore the last session" },
+	{ "<leader>qs", '<cmd>lua require("persistence").load()<cr>', desc = "Restore session for current directory" },
 })
 
 -- Terminal Mappings
-wk.register({
-	-- Floaterm Terminal mappings
-	["<leader>t"] = {
-		name = "floaterm",
-		o = { "<C-\\><C-n><cmd>FloatermNew<cr>", "Open Floaterm" },
-		n = { "<C-\\><C-n><cmd>FloatermNext<cr>", "Go to Next Floaterm" },
-		p = { "<C-\\><C-n><cmd>FloatermPrev<cr>", "Go to Previous Floaterm" },
-		t = { "<C-\\><C-n><cmd>FloatermToggle<cr>", "Toggle Floaterm" },
-	}
-}, { mode = "t" })
+--wk.register({
+--	-- Floaterm Terminal mappings
+--	["<leader>t"] = {
+--		name = "floaterm",
+--		o = { "<C-\\><C-n><cmd>FloatermNew<cr>", "Open Floaterm" },
+--		n = { "<C-\\><C-n><cmd>FloatermNext<cr>", "Go to Next Floaterm" },
+--		p = { "<C-\\><C-n><cmd>FloatermPrev<cr>", "Go to Previous Floaterm" },
+--		t = { "<C-\\><C-n><cmd>FloatermToggle<cr>", "Toggle Floaterm" },
+--	}
+--}, { mode = "t" })
 
 -- Use LspAttach autocommand to only map the following keys
 -- after the language server attaches to the current buffer
@@ -402,7 +405,7 @@ local codelldb = {
 		vim.fn.jobstart('cargo build')
 		return vim.fn.input({
 			prompt = "Path to executable: ",
-			defualt = vim.fn.getcwd() .. "\\target\\debug\\",
+			default = vim.fn.getcwd() .. "\\target\\debug\\",
 			completion = "file"
 		})
 	end,
